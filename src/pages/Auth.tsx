@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Phone, User, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-
+import logo from '@/assets/logo.png';
 const loginSchema = z.object({
   mobileNumber: z.string()
     .min(10, 'Mobile number must be 10 digits')
@@ -149,9 +149,8 @@ const Auth: React.FC = () => {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-secondary/30 p-4">
       {/* Logo & Brand */}
       <div className="mb-8 text-center">
-        <div className="mb-2 text-5xl">🍽️</div>
-        <h1 className="font-display text-3xl font-bold text-primary">Penny Carbs</h1>
-        <p className="text-sm text-muted-foreground">Delicious food, delivered with love</p>
+        <img src={logo} alt="Penny Carbs" className="mx-auto h-20 w-auto mb-2" />
+        <p className="text-sm text-muted-foreground">The Basic of Life</p>
       </div>
 
       <Card className="w-full max-w-md shadow-lg">

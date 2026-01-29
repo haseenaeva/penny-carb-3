@@ -16,6 +16,8 @@ import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import IndoorEventBooking from "./pages/IndoorEventBooking";
+import CloudKitchenOrder from "./pages/CloudKitchenOrder";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -37,6 +39,8 @@ const App = () => (
                 {/* Customer Routes */}
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/book-event" element={<IndoorEventBooking />} />
+                <Route path="/cloud-kitchen" element={<CloudKitchenOrder />} />
                 <Route path="/menu/:serviceType" element={<Menu />} />
                 <Route path="/item/:itemId" element={<ItemDetail />} />
                 <Route path="/cart" element={<Cart />} />

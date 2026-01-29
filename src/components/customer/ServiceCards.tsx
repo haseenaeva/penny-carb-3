@@ -44,7 +44,14 @@ const ServiceCards: React.FC = () => {
   const navigate = useNavigate();
 
   const handleServiceClick = (serviceType: ServiceType) => {
-    navigate(`/menu/${serviceType}`);
+    // Indoor events and cloud kitchen have special booking flows
+    if (serviceType === 'indoor_events') {
+      navigate('/book-event');
+    } else if (serviceType === 'cloud_kitchen') {
+      navigate('/cloud-kitchen');
+    } else {
+      navigate(`/menu/${serviceType}`);
+    }
   };
 
   return (

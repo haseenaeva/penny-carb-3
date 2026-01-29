@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Search, User, ChevronDown, LogOut, ShoppingBag, Settings } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 interface AppHeaderProps {
   onSearch?: (query: string) => void;
@@ -67,6 +68,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container flex h-16 items-center gap-4 px-4">
+          {/* Logo */}
+          <img 
+            src={logo} 
+            alt="Penny Carbs" 
+            className="h-10 w-auto cursor-pointer hidden sm:block" 
+            onClick={() => navigate('/')}
+          />
           {/* Location Selector */}
           <button
             onClick={() => setLocationDialogOpen(true)}

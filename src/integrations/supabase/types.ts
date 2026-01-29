@@ -133,6 +133,78 @@ export type Database = {
           },
         ]
       }
+      cloud_kitchen_slots: {
+        Row: {
+          created_at: string
+          cutoff_hours_before: number
+          display_order: number
+          end_time: string
+          id: string
+          is_active: boolean
+          name: string
+          slot_type: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cutoff_hours_before?: number
+          display_order?: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slot_type: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cutoff_hours_before?: number
+          display_order?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slot_type?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      event_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       food_categories: {
         Row: {
           created_at: string
@@ -323,17 +395,31 @@ export type Database = {
       }
       orders: {
         Row: {
+          advance_payment_received: boolean | null
+          advance_payment_required: number | null
+          advance_payment_verified_at: string | null
+          advance_payment_verified_by: string | null
           assigned_cook_id: string | null
           assigned_delivery_id: string | null
+          cloud_kitchen_slot_id: string | null
+          cook_assigned_at: string | null
+          cook_assignment_status: string | null
+          cook_responded_at: string | null
+          cook_response_deadline: string | null
           created_at: string
           customer_id: string
           delivery_address: string | null
           delivery_instructions: string | null
           event_date: string | null
           event_details: string | null
+          event_type_id: string | null
+          guest_count: number | null
           id: string
           order_number: string
+          order_type: string | null
+          package_id: string | null
           panchayat_id: string
+          service_charge_amount: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
@@ -341,17 +427,31 @@ export type Database = {
           ward_number: number
         }
         Insert: {
+          advance_payment_received?: boolean | null
+          advance_payment_required?: number | null
+          advance_payment_verified_at?: string | null
+          advance_payment_verified_by?: string | null
           assigned_cook_id?: string | null
           assigned_delivery_id?: string | null
+          cloud_kitchen_slot_id?: string | null
+          cook_assigned_at?: string | null
+          cook_assignment_status?: string | null
+          cook_responded_at?: string | null
+          cook_response_deadline?: string | null
           created_at?: string
           customer_id: string
           delivery_address?: string | null
           delivery_instructions?: string | null
           event_date?: string | null
           event_details?: string | null
+          event_type_id?: string | null
+          guest_count?: number | null
           id?: string
           order_number: string
+          order_type?: string | null
+          package_id?: string | null
           panchayat_id: string
+          service_charge_amount?: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
@@ -359,17 +459,31 @@ export type Database = {
           ward_number: number
         }
         Update: {
+          advance_payment_received?: boolean | null
+          advance_payment_required?: number | null
+          advance_payment_verified_at?: string | null
+          advance_payment_verified_by?: string | null
           assigned_cook_id?: string | null
           assigned_delivery_id?: string | null
+          cloud_kitchen_slot_id?: string | null
+          cook_assigned_at?: string | null
+          cook_assignment_status?: string | null
+          cook_responded_at?: string | null
+          cook_response_deadline?: string | null
           created_at?: string
           customer_id?: string
           delivery_address?: string | null
           delivery_instructions?: string | null
           event_date?: string | null
           event_details?: string | null
+          event_type_id?: string | null
+          guest_count?: number | null
           id?: string
           order_number?: string
+          order_type?: string | null
+          package_id?: string | null
           panchayat_id?: string
+          service_charge_amount?: number | null
           service_type?: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
@@ -378,6 +492,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_cloud_kitchen_slot_id_fkey"
+            columns: ["cloud_kitchen_slot_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_kitchen_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_panchayat_id_fkey"
             columns: ["panchayat_id"]
             isOneToOne: false
@@ -385,6 +520,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          includes_decoration: boolean
+          includes_service_staff: boolean
+          includes_venue: boolean
+          is_active: boolean
+          max_guests: number | null
+          min_guests: number | null
+          name: string
+          service_charge_percent: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          includes_decoration?: boolean
+          includes_service_staff?: boolean
+          includes_venue?: boolean
+          is_active?: boolean
+          max_guests?: number | null
+          min_guests?: number | null
+          name: string
+          service_charge_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          includes_decoration?: boolean
+          includes_service_staff?: boolean
+          includes_venue?: boolean
+          is_active?: boolean
+          max_guests?: number | null
+          min_guests?: number | null
+          name?: string
+          service_charge_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       panchayats: {
         Row: {
@@ -560,6 +743,11 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "admin" | "cook" | "delivery_staff" | "customer"
+      cook_assignment_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "auto_rejected"
       order_status:
         | "pending"
         | "confirmed"
@@ -568,6 +756,7 @@ export type Database = {
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
+      order_type: "food_only" | "full_event"
       service_type: "indoor_events" | "cloud_kitchen" | "homemade"
     }
     CompositeTypes: {
@@ -697,6 +886,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "cook", "delivery_staff", "customer"],
+      cook_assignment_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "auto_rejected",
+      ],
       order_status: [
         "pending",
         "confirmed",
@@ -706,6 +901,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      order_type: ["food_only", "full_event"],
       service_type: ["indoor_events", "cloud_kitchen", "homemade"],
     },
   },
