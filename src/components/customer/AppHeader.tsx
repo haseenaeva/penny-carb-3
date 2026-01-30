@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from '@/contexts/LocationContext';
 import { Button } from '@/components/ui/button';
@@ -17,10 +20,22 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Search, User, ChevronDown, LogOut, ShoppingBag, Settings, Truck } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { MapPin, Search, User, ChevronDown, LogOut, ShoppingBag, Settings, Truck, Phone, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import logo from '@/assets/logo.png';
+
+const mobileSchema = z.object({
+  mobileNumber: z.string()
+    .min(10, 'Mobile number must be 10 digits')
+    .max(10, 'Mobile number must be 10 digits')
+    .regex(/^\d+$/, 'Mobile number must contain only digits'),
+});
+
+type MobileFormData = z.infer<typeof mobileSchema>;
 
 interface AppHeaderProps {
   onSearch?: (query: string) => void;
@@ -28,7 +43,7 @@ interface AppHeaderProps {
 
 const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
   const navigate = useNavigate();
-  const { user, profile, signOut, role } = useAuth();
+  const { user, profile, signOut, role, customerSignIn } = useAuth();
   const { 
     panchayats, 
     selectedPanchayat, 
@@ -40,6 +55,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [customerLoginOpen, setCustomerLoginOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNotRegistered, setShowNotRegistered] = useState(false);
+  const [attemptedMobile, setAttemptedMobile] = useState('');
+
+  const mobileForm = useForm<MobileFormData>({
+    resolver: zodResolver(mobileSchema),
+    defaultValues: {
+      mobileNumber: '',
+    },
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +74,47 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
+  };
+
+  const handleCustomerLogin = async (data: MobileFormData) => {
+    setIsSubmitting(true);
+    setShowNotRegistered(false);
+    try {
+      const { error } = await customerSignIn(data.mobileNumber);
+      if (error) {
+        if (error.message.includes('not found') || error.message.includes('Invalid login')) {
+          setAttemptedMobile(data.mobileNumber);
+          setShowNotRegistered(true);
+        } else {
+          toast({
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully",
+        });
+        setCustomerLoginOpen(false);
+        mobileForm.reset();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoToRegister = () => {
+    setCustomerLoginOpen(false);
+    navigate('/customer-auth', { state: { mobileNumber: attemptedMobile, tab: 'signup' } });
   };
 
   const handlePanchayatChange = (panchayatId: string) => {
     const panchayat = panchayats.find(p => p.id === panchayatId);
     setSelectedPanchayat(panchayat || null);
-    setSelectedWardNumber(null); // Reset ward when panchayat changes
+    setSelectedWardNumber(null);
   };
 
   const handleWardChange = (wardNumber: string) => {
@@ -97,10 +157,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigate('/customer-auth')}
+                onClick={() => {
+                  setShowNotRegistered(false);
+                  mobileForm.reset();
+                  setCustomerLoginOpen(true);
+                }}
                 className="hidden sm:flex"
               >
-                Login
+                Customer
               </Button>
             )}
           </div>
@@ -216,6 +280,74 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Customer Login Dialog */}
+      <Dialog open={customerLoginOpen} onOpenChange={setCustomerLoginOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-primary" />
+              Customer Login
+            </DialogTitle>
+            <DialogDescription>
+              Enter your registered mobile number to login
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!showNotRegistered ? (
+            <Form {...mobileForm}>
+              <form onSubmit={mobileForm.handleSubmit(handleCustomerLogin)} className="space-y-4 py-4">
+                <FormField
+                  control={mobileForm.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Enter your 10-digit mobile number"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Continue
+                </Button>
+              </form>
+            </Form>
+          ) : (
+            <div className="py-4 space-y-4">
+              <div className="rounded-lg bg-destructive/10 p-4 text-center">
+                <p className="text-sm text-destructive font-medium">
+                  You are not registered
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Mobile number {attemptedMobile} is not found in our system
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button onClick={handleGoToRegister} className="w-full">
+                  Register New Account
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowNotRegistered(false)} 
+                  className="w-full"
+                >
+                  Try Another Number
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

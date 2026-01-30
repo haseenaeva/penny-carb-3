@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation as useRouterLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,10 +37,14 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 const CustomerAuth: React.FC = () => {
   const navigate = useNavigate();
+  const routerLocation = useRouterLocation();
   const { customerSignIn, customerSignUp, user, isLoading: authLoading } = useAuth();
   const { panchayats, getWardsForPanchayat, isLoading: locationLoading } = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('login');
+  
+  // Get state from navigation (mobile number and tab preference)
+  const navState = routerLocation.state as { mobileNumber?: string; tab?: string } | null;
+  const [activeTab, setActiveTab] = useState(navState?.tab || 'login');
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -66,7 +70,14 @@ const CustomerAuth: React.FC = () => {
 
   useEffect(() => {
     signupForm.setValue('wardNumber', '');
-  }, [selectedPanchayatId]);
+  }, [selectedPanchayatId, signupForm]);
+
+  // Pre-fill mobile number if coming from header login dialog
+  useEffect(() => {
+    if (navState?.mobileNumber) {
+      signupForm.setValue('mobileNumber', navState.mobileNumber);
+    }
+  }, [navState, signupForm]);
 
   useEffect(() => {
     if (user && !authLoading) {
