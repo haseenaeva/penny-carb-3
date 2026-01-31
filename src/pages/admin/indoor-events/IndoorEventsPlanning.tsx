@@ -72,7 +72,7 @@ const statusColors: Record<OrderStatus, string> = {
 
 const IndoorEventsPlanning: React.FC = () => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('pending');
   const [selectedOrder, setSelectedOrder] = useState<IndoorEventOrder | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({
