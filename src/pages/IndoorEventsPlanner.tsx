@@ -1,0 +1,399 @@
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { format, addDays, isBefore, startOfDay } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from '@/contexts/LocationContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { ArrowLeft, Calculator, Loader2, CheckCircle } from 'lucide-react';
+import BottomNav from '@/components/customer/BottomNav';
+
+// Planner Step Components
+import PlannerStepIndicator from '@/components/indoor-events/PlannerStepIndicator';
+import EventTypeStep from '@/components/indoor-events/EventTypeStep';
+import GuestCountStep from '@/components/indoor-events/GuestCountStep';
+import FoodSelectionStep from '@/components/indoor-events/FoodSelectionStep';
+import ServicesStep from '@/components/indoor-events/ServicesStep';
+import BudgetSummaryStep from '@/components/indoor-events/BudgetSummaryStep';
+import EventModelsStep from '@/components/indoor-events/EventModelsStep';
+import SubmitPlanningStep from '@/components/indoor-events/SubmitPlanningStep';
+
+import type { EventType } from '@/types/events';
+
+export interface SelectedFood {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  category: string;
+}
+
+export interface SelectedService {
+  id: string;
+  name: string;
+  price: number;
+  priceType: 'fixed' | 'per_guest';
+  enabled: boolean;
+}
+
+export interface PlannerData {
+  eventType: EventType | null;
+  guestCount: number;
+  selectedFoods: SelectedFood[];
+  selectedServices: SelectedService[];
+  eventDate: Date | undefined;
+  eventTime: string;
+  eventDetails: string;
+  deliveryAddress: string;
+  contactNumber: string;
+}
+
+const STEPS = [
+  'Event Type',
+  'Guests',
+  'Food',
+  'Services',
+  'Summary',
+  'Models',
+  'Submit',
+];
+
+const IndoorEventsPlanner: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { selectedPanchayat, selectedWardNumber } = useLocation();
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const [plannerData, setPlannerData] = useState<PlannerData>({
+    eventType: null,
+    guestCount: 50,
+    selectedFoods: [],
+    selectedServices: [],
+    eventDate: undefined,
+    eventTime: '',
+    eventDetails: '',
+    deliveryAddress: '',
+    contactNumber: profile?.mobile_number || '',
+  });
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    const foodTotal = plannerData.selectedFoods.reduce(
+      (sum, food) => sum + food.price * food.quantity * plannerData.guestCount,
+      0
+    );
+
+    const serviceTotal = plannerData.selectedServices
+      .filter((s) => s.enabled)
+      .reduce((sum, service) => {
+        if (service.priceType === 'per_guest') {
+          return sum + service.price * plannerData.guestCount;
+        }
+        return sum + service.price;
+      }, 0);
+
+    const grandTotal = foodTotal + serviceTotal;
+    const perPersonCost = plannerData.guestCount > 0 ? grandTotal / plannerData.guestCount : 0;
+
+    return { foodTotal, serviceTotal, grandTotal, perPersonCost };
+  }, [plannerData]);
+
+  const updatePlannerData = (updates: Partial<PlannerData>) => {
+    setPlannerData((prev) => ({ ...prev, ...updates }));
+  };
+
+  const goToStep = (step: number) => {
+    if (step >= 0 && step < STEPS.length) {
+      setCurrentStep(step);
+    }
+  };
+
+  const nextStep = () => goToStep(currentStep + 1);
+  const prevStep = () => goToStep(currentStep - 1);
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to submit your planning request",
+        variant: "destructive",
+      });
+      navigate('/customer-auth');
+      return;
+    }
+
+    if (!plannerData.eventType) {
+      toast({ title: "Event type required", variant: "destructive" });
+      return;
+    }
+
+    if (!plannerData.eventDate) {
+      toast({ title: "Event date required", variant: "destructive" });
+      return;
+    }
+
+    if (!selectedPanchayat || !selectedWardNumber) {
+      toast({ title: "Location required", description: "Select location from home page", variant: "destructive" });
+      return;
+    }
+
+    if (!plannerData.deliveryAddress.trim()) {
+      toast({ title: "Venue address required", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const orderNumber = `IEP-${Date.now().toString(36).toUpperCase()}`;
+
+      // Build detailed event info
+      const foodDetails = plannerData.selectedFoods.map(
+        (f) => `${f.name} x${f.quantity} (₹${f.price}/plate)`
+      ).join(', ');
+
+      const serviceDetails = plannerData.selectedServices
+        .filter((s) => s.enabled)
+        .map((s) => `${s.name}: ₹${s.priceType === 'per_guest' ? s.price + '/guest' : s.price}`)
+        .join(', ');
+
+      const eventDetailsText = `
+PLANNING REQUEST
+================
+Time: ${plannerData.eventTime || 'Not specified'}
+Contact: ${plannerData.contactNumber}
+Guests: ${plannerData.guestCount}
+
+SELECTED FOOD:
+${foodDetails || 'No food selected'}
+
+SELECTED SERVICES:
+${serviceDetails || 'No services selected'}
+
+ESTIMATED BUDGET:
+Food: ₹${totals.foodTotal.toLocaleString()}
+Services: ₹${totals.serviceTotal.toLocaleString()}
+Total: ₹${totals.grandTotal.toLocaleString()}
+Per Person: ₹${Math.round(totals.perPersonCost).toLocaleString()}
+
+SPECIAL INSTRUCTIONS:
+${plannerData.eventDetails || 'None'}
+      `.trim();
+
+      const { error } = await supabase.from('orders').insert({
+        order_number: orderNumber,
+        customer_id: user.id,
+        service_type: 'indoor_events',
+        event_type_id: plannerData.eventType.id,
+        event_date: plannerData.eventDate.toISOString(),
+        guest_count: plannerData.guestCount,
+        event_details: eventDetailsText,
+        delivery_address: plannerData.deliveryAddress,
+        panchayat_id: selectedPanchayat.id,
+        ward_number: selectedWardNumber,
+        status: 'pending',
+        order_type: 'full_event',
+        total_amount: totals.grandTotal, // Estimated, admin can adjust
+      });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      toast({
+        title: "Planning Request Submitted!",
+        description: "We will review and contact you with final quotation.",
+      });
+    } catch (error: any) {
+      console.error('Error submitting planning:', error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <header className="sticky top-0 z-50 w-full border-b bg-indoor-events text-white">
+          <div className="container flex h-14 items-center gap-4 px-4">
+            <Calculator className="h-6 w-6" />
+            <h1 className="text-lg font-semibold">Planning Submitted</h1>
+          </div>
+        </header>
+
+        <main className="container px-4 py-12 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
+              <CheckCircle className="h-10 w-10 text-success" />
+            </div>
+            <h2 className="text-2xl font-display font-bold">Request Submitted!</h2>
+            <p className="text-muted-foreground max-w-sm">
+              Your event planning request has been submitted. Our team will review and contact you with a final quotation.
+            </p>
+            
+            <div className="bg-muted rounded-xl p-4 mt-4 text-left w-full max-w-sm">
+              <p className="text-sm font-medium mb-2">Estimated Budget</p>
+              <p className="text-2xl font-bold text-indoor-events">
+                ₹{totals.grandTotal.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Final amount may vary after admin review
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" onClick={() => navigate('/orders')}>
+                View My Bookings
+              </Button>
+              <Button onClick={() => navigate('/')} className="bg-indoor-events hover:bg-indoor-events/90">
+                Back to Home
+              </Button>
+            </div>
+          </div>
+        </main>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <EventTypeStep
+            selectedEventType={plannerData.eventType}
+            onSelect={(eventType) => updatePlannerData({ eventType })}
+            onNext={nextStep}
+          />
+        );
+      case 1:
+        return (
+          <GuestCountStep
+            guestCount={plannerData.guestCount}
+            onChange={(guestCount) => updatePlannerData({ guestCount })}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        );
+      case 2:
+        return (
+          <FoodSelectionStep
+            selectedFoods={plannerData.selectedFoods}
+            guestCount={plannerData.guestCount}
+            onUpdateFoods={(selectedFoods) => updatePlannerData({ selectedFoods })}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        );
+      case 3:
+        return (
+          <ServicesStep
+            selectedServices={plannerData.selectedServices}
+            guestCount={plannerData.guestCount}
+            onUpdateServices={(selectedServices) => updatePlannerData({ selectedServices })}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        );
+      case 4:
+        return (
+          <BudgetSummaryStep
+            plannerData={plannerData}
+            totals={totals}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        );
+      case 5:
+        return (
+          <EventModelsStep
+            guestCount={plannerData.guestCount}
+            onApplyModel={(foods, services) => {
+              updatePlannerData({ selectedFoods: foods, selectedServices: services });
+            }}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        );
+      case 6:
+        return (
+          <SubmitPlanningStep
+            plannerData={plannerData}
+            totals={totals}
+            onUpdateData={updatePlannerData}
+            onSubmit={handleSubmit}
+            onBack={prevStep}
+            isSubmitting={isSubmitting}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-indoor-events text-white">
+        <div className="container flex h-14 items-center gap-4 px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => currentStep === 0 ? navigate('/indoor-events') : prevStep()}
+            className="text-white hover:bg-white/20"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <Calculator className="h-6 w-6" />
+          <h1 className="text-lg font-semibold">Plan & Estimate Budget</h1>
+        </div>
+      </header>
+
+      {/* Step Indicator */}
+      <PlannerStepIndicator
+        steps={STEPS}
+        currentStep={currentStep}
+        onStepClick={goToStep}
+      />
+
+      {/* Step Content */}
+      <main className="container px-4 py-6">
+        {renderStep()}
+      </main>
+
+      {/* Fixed Budget Bar */}
+      {currentStep >= 2 && currentStep < 6 && (
+        <div className="fixed bottom-16 left-0 right-0 bg-card border-t p-3 shadow-lg">
+          <div className="container flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Estimated Total</p>
+              <p className="text-lg font-bold text-indoor-events">
+                ₹{totals.grandTotal.toLocaleString()}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Per Person</p>
+              <p className="text-sm font-medium">
+                ₹{Math.round(totals.perPersonCost).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BottomNav />
+    </div>
+  );
+};
+
+export default IndoorEventsPlanner;

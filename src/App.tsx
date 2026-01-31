@@ -23,6 +23,11 @@ import IndoorEventBooking from "./pages/IndoorEventBooking";
 import CloudKitchenOrder from "./pages/CloudKitchenOrder";
 import HomemadeOrder from "./pages/HomemadeOrder";
 
+// Indoor Events Pages
+import IndoorEvents from "./pages/IndoorEvents";
+import IndoorEventsQuickBooking from "./pages/IndoorEventsQuickBooking";
+import IndoorEventsPlanner from "./pages/IndoorEventsPlanner";
+
 // Cook Pages
 import CookLogin from "./pages/cook/CookLogin";
 import CookDashboard from "./pages/cook/CookDashboard";
@@ -65,7 +70,14 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/customer-auth" element={<CustomerAuth />} />
+                
+                {/* Indoor Events Routes */}
+                <Route path="/indoor-events" element={<IndoorEvents />} />
+                <Route path="/indoor-events/quick-booking" element={<IndoorEventsQuickBooking />} />
+                <Route path="/indoor-events/planner" element={<IndoorEventsPlanner />} />
                 <Route path="/book-event" element={<IndoorEventBooking />} />
+                
+                {/* Other Service Routes */}
                 <Route path="/cloud-kitchen" element={<CloudKitchenOrder />} />
                 <Route path="/homemade" element={<HomemadeOrder />} />
                 <Route path="/menu/:serviceType" element={<Menu />} />

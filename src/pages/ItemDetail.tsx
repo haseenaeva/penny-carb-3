@@ -200,7 +200,7 @@ const ItemDetail: React.FC = () => {
           // Indoor Events - Show Book Event button (no cart)
           <Button 
             className="w-full h-12 text-base bg-indoor-events hover:bg-indoor-events/90" 
-            onClick={() => navigate('/book-event')}
+            onClick={() => navigate('/indoor-events')}
           >
             <CalendarHeart className="mr-2 h-5 w-5" />
             Book Event with This Dish

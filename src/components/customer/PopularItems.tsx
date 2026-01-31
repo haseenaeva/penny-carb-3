@@ -106,7 +106,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({ serviceType, title, limit =
             <Card
               key={item.id}
               className="w-40 flex-shrink-0 cursor-pointer overflow-hidden transition-all hover:shadow-lg"
-              onClick={() => isIndoorEvents ? navigate('/book-event') : handleItemClick(item.id)}
+              onClick={() => isIndoorEvents ? navigate('/indoor-events') : handleItemClick(item.id)}
             >
               <div className="relative h-28 w-full overflow-hidden bg-secondary">
                 {primaryImage ? (
@@ -145,7 +145,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({ serviceType, title, limit =
                       className="h-7 rounded-full border-indoor-events text-indoor-events text-xs px-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate('/book-event');
+                        navigate('/indoor-events');
                       }}
                     >
                       Book
