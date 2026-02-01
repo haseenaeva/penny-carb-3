@@ -28,7 +28,7 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-muted-foreground">Select Event Type</h3>
+      <h3 className="text-sm font-medium text-muted-foreground">Select Event Type(ഏതു തരം പരിപാടിയാണെന്ന് തിരഞ്ഞെടുക്കു) </h3>
       <div className="grid grid-cols-2 gap-3">
         {eventTypes?.map((eventType) => (
           <Card
