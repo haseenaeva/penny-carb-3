@@ -33,19 +33,45 @@ const IndoorEventsQuickBooking: React.FC = () => {
   const { user, profile } = useAuth();
   const { selectedPanchayat, selectedWardNumber } = useLocation();
 
+  // Load pre-selected event type and items from session storage
+  const getInitialEventType = (): EventType | null => {
+    const stored = sessionStorage.getItem('indoor_event_type');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_type');
+      return JSON.parse(stored);
+    }
+    return null;
+  };
+
+  const getInitialItems = (): Map<string, SelectedItem> => {
+    const stored = sessionStorage.getItem('indoor_event_items');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_items');
+      const items = JSON.parse(stored) as Array<{ id: string; name: string; price: number; quantity: number }>;
+      const map = new Map<string, SelectedItem>();
+      items.forEach(item => {
+        map.set(item.id, {
+          item: { id: item.id, name: item.name, price: item.price } as FoodItem,
+          quantity: item.quantity,
+        });
+      });
+      return map;
+    }
+    return new Map();
+  };
+
   const [activeDialog, setActiveDialog] = useState<DialogStep>(null);
-  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(null);
+  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(getInitialEventType);
   const [eventDate, setEventDate] = useState<Date | undefined>();
   const [eventTime, setEventTime] = useState('');
   const [guestCount, setGuestCount] = useState<number>(50);
   const [contactNumber, setContactNumber] = useState(profile?.mobile_number || '');
   const [eventDetails, setEventDetails] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
+  const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(getInitialItems);
   const [referralMobile, setReferralMobile] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-
   const minDate = addDays(startOfDay(new Date()), 1);
 
   // Calculate totals from selected items

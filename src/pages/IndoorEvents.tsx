@@ -5,19 +5,78 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Zap, Calculator, CalendarHeart, UserPlus, X } from 'lucide-react';
 import BottomNav from '@/components/customer/BottomNav';
+import EventTypeSelector from '@/components/events/EventTypeSelector';
+import StepDialog from '@/components/indoor-events/StepDialog';
+import QuickBookingFoodSelection from '@/components/indoor-events/QuickBookingFoodSelection';
+import type { EventType } from '@/types/events';
+import type { FoodItem } from '@/hooks/useIndoorEventItems';
+
+interface SelectedItem {
+  item: FoodItem;
+  quantity: number;
+}
+
+type BookingMode = 'quick' | 'planner' | null;
 
 const IndoorEvents: React.FC = () => {
   const navigate = useNavigate();
   const [showReferral, setShowReferral] = useState(false);
   const [referralMobile, setReferralMobile] = useState('');
+  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(null);
+  
+  // Popup state
+  const [bookingMode, setBookingMode] = useState<BookingMode>(null);
+  const [showFoodSelection, setShowFoodSelection] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
 
-  const handleBookingClick = (path: string) => {
-    // Store referral info if provided
+  const handleBookingClick = (mode: BookingMode) => {
+    if (!selectedEventType) {
+      return; // Button should be disabled anyway
+    }
+    
+    // Store referral info and event type for the booking pages
     if (referralMobile.trim()) {
       sessionStorage.setItem('indoor_event_referral', referralMobile.trim());
     }
-    navigate(path);
+    sessionStorage.setItem('indoor_event_type', JSON.stringify(selectedEventType));
+    
+    // Set mode and open food selection popup
+    setBookingMode(mode);
+    setShowFoodSelection(true);
   };
+
+  const handleFoodSelectionContinue = () => {
+    // Store selected items for the booking pages
+    const itemsArray = Array.from(selectedItems.values()).map(({ item, quantity }) => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity,
+    }));
+    sessionStorage.setItem('indoor_event_items', JSON.stringify(itemsArray));
+    
+    setShowFoodSelection(false);
+    
+    // Navigate to the appropriate page
+    if (bookingMode === 'quick') {
+      navigate('/indoor-events/quick-booking');
+    } else {
+      navigate('/indoor-events/planner');
+    }
+  };
+
+  const handleSkipFoodSelection = () => {
+    sessionStorage.removeItem('indoor_event_items');
+    setShowFoodSelection(false);
+    
+    if (bookingMode === 'quick') {
+      navigate('/indoor-events/quick-booking');
+    } else {
+      navigate('/indoor-events/planner');
+    }
+  };
+
+  const totalItemsCount = Array.from(selectedItems.values()).reduce((sum, { quantity }) => sum + quantity, 0);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -37,15 +96,13 @@ const IndoorEvents: React.FC = () => {
         </div>
       </header>
 
-      <main className="container px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-            Plan Your Perfect Event
-          </h2>
-          <p className="text-muted-foreground">
-            Choose your booking style
-          </p>
+      <main className="container px-4 py-6">
+        {/* Event Type Selection - Default Shown */}
+        <div className="mb-6">
+          <EventTypeSelector
+            selectedEventType={selectedEventType}
+            onSelect={setSelectedEventType}
+          />
         </div>
 
         {/* Referral Section */}
@@ -96,8 +153,12 @@ const IndoorEvents: React.FC = () => {
         <div className="space-y-4">
           {/* Quick Booking Card */}
           <div 
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 p-6 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-            onClick={() => handleBookingClick('/indoor-events/quick-booking')}
+            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 p-6 transition-all ${
+              selectedEventType 
+                ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]' 
+                : 'opacity-60 cursor-not-allowed'
+            }`}
+            onClick={() => selectedEventType && handleBookingClick('quick')}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -117,8 +178,12 @@ const IndoorEvents: React.FC = () => {
 
           {/* Plan & Estimate Card */}
           <div 
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 p-6 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-            onClick={() => handleBookingClick('/indoor-events/planner')}
+            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 p-6 transition-all ${
+              selectedEventType 
+                ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]' 
+                : 'opacity-60 cursor-not-allowed'
+            }`}
+            onClick={() => selectedEventType && handleBookingClick('planner')}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -144,11 +209,57 @@ const IndoorEvents: React.FC = () => {
           </div>
         </div>
 
+        {/* Hint Text */}
+        {!selectedEventType && (
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            Please select an event type above to continue
+          </p>
+        )}
+
         {/* Info Text */}
         <p className="text-center text-sm text-muted-foreground mt-8">
           All bookings require admin approval. No instant payment.
         </p>
       </main>
+
+      {/* Food Selection Popup */}
+      <StepDialog
+        open={showFoodSelection}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowFoodSelection(false);
+            setBookingMode(null);
+          }
+        }}
+        title="Food Selection (Optional)"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Select dishes you'd like for your event, or skip to continue.
+          </p>
+          
+          <QuickBookingFoodSelection
+            selectedItems={selectedItems}
+            onItemsChange={setSelectedItems}
+          />
+          
+          <div className="flex gap-3 pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={handleSkipFoodSelection}
+              className="flex-1"
+            >
+              Skip
+            </Button>
+            <Button
+              className="flex-1 bg-indoor-events hover:bg-indoor-events/90"
+              onClick={handleFoodSelectionContinue}
+            >
+              {totalItemsCount > 0 ? `Continue (${totalItemsCount} items)` : 'Continue'}
+            </Button>
+          </div>
+        </div>
+      </StepDialog>
 
       <BottomNav />
     </div>

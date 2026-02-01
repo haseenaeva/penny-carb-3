@@ -78,15 +78,47 @@ const IndoorEventsPlanner: React.FC = () => {
   const { user, profile } = useAuth();
   const { selectedPanchayat, selectedWardNumber } = useLocation();
 
+  // Load pre-selected event type and items from session storage
+  const getInitialEventType = (): EventType | null => {
+    const stored = sessionStorage.getItem('indoor_event_type');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_type');
+      return JSON.parse(stored);
+    }
+    return null;
+  };
+
+  const getInitialFoods = (): SelectedFood[] => {
+    const stored = sessionStorage.getItem('indoor_event_items');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_items');
+      const items = JSON.parse(stored) as Array<{ id: string; name: string; price: number; quantity: number }>;
+      return items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        category: '',
+      }));
+    }
+    return [];
+  };
+
+  const initialEventType = getInitialEventType();
+  const initialFoods = getInitialFoods();
+  const initialCompletedSteps = new Set<string>();
+  if (initialEventType) initialCompletedSteps.add('event-type');
+  if (initialFoods.length > 0) initialCompletedSteps.add('food');
+
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(initialCompletedSteps);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [plannerData, setPlannerData] = useState<PlannerData>({
-    eventType: null,
+    eventType: initialEventType,
     guestCount: 50,
-    selectedFoods: [],
+    selectedFoods: initialFoods,
     selectedServices: [],
     eventDate: undefined,
     eventTime: '',
