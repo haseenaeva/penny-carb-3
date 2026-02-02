@@ -705,6 +705,7 @@ export type Database = {
           available_all_panchayats: boolean | null
           available_panchayat_ids: string[] | null
           category_id: string | null
+          cloud_kitchen_slot_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -716,6 +717,7 @@ export type Database = {
           is_vegetarian: boolean
           max_images: number
           min_images: number
+          min_order_sets: number | null
           name: string
           panchayat_id: string | null
           preparation_time_minutes: number | null
@@ -723,6 +725,7 @@ export type Database = {
           serves_persons: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           service_types: string[] | null
+          set_size: number | null
           updated_at: string
           ward_number: number | null
         }
@@ -730,6 +733,7 @@ export type Database = {
           available_all_panchayats?: boolean | null
           available_panchayat_ids?: string[] | null
           category_id?: string | null
+          cloud_kitchen_slot_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -741,6 +745,7 @@ export type Database = {
           is_vegetarian?: boolean
           max_images?: number
           min_images?: number
+          min_order_sets?: number | null
           name: string
           panchayat_id?: string | null
           preparation_time_minutes?: number | null
@@ -748,6 +753,7 @@ export type Database = {
           serves_persons?: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           service_types?: string[] | null
+          set_size?: number | null
           updated_at?: string
           ward_number?: number | null
         }
@@ -755,6 +761,7 @@ export type Database = {
           available_all_panchayats?: boolean | null
           available_panchayat_ids?: string[] | null
           category_id?: string | null
+          cloud_kitchen_slot_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -766,6 +773,7 @@ export type Database = {
           is_vegetarian?: boolean
           max_images?: number
           min_images?: number
+          min_order_sets?: number | null
           name?: string
           panchayat_id?: string | null
           preparation_time_minutes?: number | null
@@ -773,6 +781,7 @@ export type Database = {
           serves_persons?: number | null
           service_type?: Database["public"]["Enums"]["service_type"]
           service_types?: string[] | null
+          set_size?: number | null
           updated_at?: string
           ward_number?: number | null
         }
@@ -782,6 +791,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "food_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_items_cloud_kitchen_slot_id_fkey"
+            columns: ["cloud_kitchen_slot_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_kitchen_slots"
             referencedColumns: ["id"]
           },
           {
