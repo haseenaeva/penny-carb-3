@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Minus, Leaf, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectedFood } from '@/pages/IndoorEventsPlanner';
+import FoodQuantitySuggestionDialog from './FoodQuantitySuggestionDialog';
 
 interface FoodSelectionStepProps {
   selectedFoods: SelectedFood[];
@@ -16,6 +17,14 @@ interface FoodSelectionStepProps {
   onUpdateFoods: (foods: SelectedFood[]) => void;
   onNext: () => void;
   onBack: () => void;
+}
+
+interface FoodItemForSuggestion {
+  id: string;
+  name: string;
+  price: number;
+  serves_persons: number | null;
+  category: string;
 }
 
 const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
@@ -26,6 +35,8 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
   onBack,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [suggestionItem, setSuggestionItem] = useState<FoodItemForSuggestion | null>(null);
+  const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -64,26 +75,53 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
     return selectedFoods.find((f) => f.id === itemId)?.quantity || 0;
   };
 
+  // Show suggestion dialog when adding new item
   const handleAddFood = (item: any) => {
     const existing = selectedFoods.find((f) => f.id === item.id);
+    
     if (existing) {
+      // If already selected, just increment by 1
       onUpdateFoods(
         selectedFoods.map((f) =>
           f.id === item.id ? { ...f, quantity: f.quantity + 1 } : f
         )
       );
     } else {
-      onUpdateFoods([
-        ...selectedFoods,
-        {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: 1,
-          category: item.food_categories?.name || 'Other',
-        },
-      ]);
+      // Show suggestion dialog for new items
+      setSuggestionItem({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        serves_persons: item.serves_persons,
+        category: item.food_categories?.name || 'Other',
+      });
+      setShowSuggestionDialog(true);
     }
+  };
+
+  // Accept suggested quantity
+  const handleAcceptSuggestion = (quantity: number) => {
+    if (!suggestionItem) return;
+    
+    onUpdateFoods([
+      ...selectedFoods,
+      {
+        id: suggestionItem.id,
+        name: suggestionItem.name,
+        price: suggestionItem.price,
+        quantity: quantity,
+        category: suggestionItem.category,
+      },
+    ]);
+    
+    setShowSuggestionDialog(false);
+    setSuggestionItem(null);
+  };
+
+  // Cancel suggestion
+  const handleCancelSuggestion = () => {
+    setShowSuggestionDialog(false);
+    setSuggestionItem(null);
   };
 
   const handleRemoveFood = (itemId: string) => {
@@ -185,6 +223,12 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
                         <p className="text-xs text-muted-foreground line-clamp-1">
                           {item.description}
                         </p>
+                        {/* Show serves info */}
+                        {item.serves_persons && item.serves_persons > 1 && (
+                          <p className="text-xs text-indoor-events/70 mt-0.5">
+                            Serves {item.serves_persons} persons/unit
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -195,7 +239,7 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
                         </p>
                         {qty > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {qty} x {guestCount} = ₹{(item.price * qty * guestCount).toLocaleString()}
+                            {qty} × {guestCount} = ₹{(item.price * qty * guestCount).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -274,6 +318,17 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
           {selectedFoods.length > 0 && ` (₹${foodTotal.toLocaleString()})`}
         </Button>
       </div>
+
+      {/* Quantity Suggestion Dialog */}
+      <FoodQuantitySuggestionDialog
+        open={showSuggestionDialog}
+        onOpenChange={setShowSuggestionDialog}
+        item={suggestionItem}
+        guestCount={guestCount}
+        currentQuantity={0}
+        onAccept={handleAcceptSuggestion}
+        onCancel={handleCancelSuggestion}
+      />
     </div>
   );
 };
